@@ -1,0 +1,70 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.project
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Flutter/Dart/Pub-related
+# Keep in mind that some IDEs can generate files in these locations as well.
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+
+# Symbolication metadata
+app.*.symbols
+
+# Obfuscation map
+app.*.map.json
+
+# Android Studio clean build artifacts
+android/app/src/main/res/values/strings.xml
+android/local.properties
+android/key.properties
+android/app/google-services.json
+
+# iOS-specific
+ios/.pcode
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Flutter/flutter_plugins_dependencies.plist
+ios/Flutter/ephemeral/
+ios/Runner/GeneratedPluginRegistrant.h
+ios/Runner/GeneratedPluginRegistrant.m
+ios/.symlinks/
+ios/Pods/
+ios/Podfile.lock
+
+# macOS-specific
+macos/Flutter/ephemeral/
+macos/Flutter/GeneratedPluginRegistrant.swift
+macos/Flutter/flutter_plugins_dependencies.plist
+macos/.symlinks/
+macos/Pods/
+macos/Podfile.lock
+
+# Linux-specific
+linux/flutter/ephemeral/
+
+# Windows-specific
+windows/flutter/ephemeral/
+
+# Web-specific
+web/stack.css
+
+# Coverage
+coverage/

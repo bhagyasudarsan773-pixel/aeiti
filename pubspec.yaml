@@ -1,0 +1,29 @@
+name: tide
+description: A new Flutter project.
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  table_calendar: ^3.1.2
+  percent_indicator: ^4.2.3
+  google_fonts: ^6.1.0
+  shared_preferences: ^2.2.2
+  firebase_core: any
+  firebase_auth: any
+  cloud_firestore: any
+  http: any
+  firebase_database: ^12.4.3
+  cloud_functions: ^6.3.3
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
