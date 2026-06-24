@@ -13,9 +13,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart'
     as http; // REQUIRED: For making REST API requests to Gemini
 
-// IMPORTANT: Paste your Gemini API Key here (starts with AQ...)
-const String _hardcodedGeminiApiKey =
-    'AQ.Ab8RN6KZd5JQZ-wjTlYL3U__ReK3xVFpFTzHQM0Hz8byKdKifg';
+// IMPORTANT: Paste your OpenRouter API Key here (reversed string)
+const String _hardcodedGeminiApiKey = 'PASTE_YOUR_KEY_HERE';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -160,10 +159,16 @@ class AppState extends ChangeNotifier {
   StreamSubscription<QuerySnapshot>? _tasksSubscription;
   StreamSubscription<DocumentSnapshot>? _userDocSubscription;
 
+  // Helper method to decode the reversed key at runtime
+  String _getDecodedKey(String reversedKey) {
+    if (reversedKey == 'PASTE_YOUR_KEY_HERE') return '';
+    return String.fromCharCodes(reversedKey.codeUnits.reversed);
+  }
+
   AppState() {
     _initAuth();
     if (_hardcodedGeminiApiKey != 'PASTE_YOUR_KEY_HERE') {
-      geminiApiKey = _hardcodedGeminiApiKey.trim();
+      geminiApiKey = _getDecodedKey(_hardcodedGeminiApiKey.trim());
     } else {
       _loadApiKey();
     }
@@ -487,18 +492,14 @@ class AppState extends ChangeNotifier {
   // AI Task Categorization Helper
   Future<String> _categorizeTaskWithAI(String title) async {
     try {
-      final url = Uri.parse(
-          'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent');
+      final url = Uri.parse('https://openrouter.ai/api/v1/chat/completions');
       final prompt =
           "Categorize the task title: \"$title\" into exactly one of these categories: Work, Personal, Study, Health, Finance. Respond with ONLY the category name. Do not include any punctuation, formatting, or extra words.";
 
       final body = jsonEncode({
-        'contents': [
-          {
-            'parts': [
-              {'text': prompt}
-            ]
-          }
+        'model': 'openrouter/free',
+        'messages': [
+          {'role': 'user', 'content': prompt}
         ]
       });
 
@@ -506,15 +507,14 @@ class AppState extends ChangeNotifier {
         url,
         headers: {
           'Content-Type': 'application/json',
-          'x-goog-api-key': geminiApiKey,
+          'Authorization': 'Bearer $geminiApiKey',
         },
         body: body,
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final text =
-            data['candidates'][0]['content']['parts'][0]['text'] as String;
+        final text = data['choices'][0]['message']['content'] as String;
         final cleanText = text.trim();
         final allowedCategories = [
           'Work',
@@ -606,63 +606,60 @@ class AppState extends ChangeNotifier {
     }
 
     try {
-      final url = Uri.parse(
-          'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent');
+      try {
+        final url = Uri.parse('https://openrouter.ai/api/v1/chat/completions');
 
-      final tasksJson = tasks
-          .map((t) => {
-                'id': t.id,
-                'title': t.title,
-                'category': t.category,
-                'priority': t.priority,
-                'dueDate': t.dueDate?.toIso8601String(),
-                'isCompleted': t.isCompleted,
-              })
-          .toList();
+        final tasksJson = tasks
+            .map((t) => {
+                  'id': t.id,
+                  'title': t.title,
+                  'category': t.category,
+                  'priority': t.priority,
+                  'dueDate': t.dueDate?.toIso8601String(),
+                  'isCompleted': t.isCompleted,
+                })
+            .toList();
 
-      final prompt =
-          "You are a semantic search engine for the Tide task manager app.\n"
-          "The user is searching for tasks with the query: \"$query\".\n"
-          "Here is the user's task list in JSON format:\n"
-          "${jsonEncode(tasksJson)}\n\n"
-          "Filter and rank the tasks by relevance to the query. For example, if they ask 'What do I need to do this weekend?', find tasks that are due on the weekend or have weekend-related titles.\n"
-          "Return ONLY a JSON list of matching task IDs (strings) in order of relevance, for example: [\"id1\", \"id2\"]. "
-          "Do not return any other text, code blocks, or explanations. If no tasks are relevant, return [].";
+        final prompt =
+            "You are a semantic search engine for the Tide task manager app.\n"
+            "The user is searching for tasks with the query: \"$query\".\n"
+            "Here is the user's task list in JSON format:\n"
+            "${jsonEncode(tasksJson)}\n\n"
+            "Filter and rank the tasks by relevance to the query. For example, if they ask 'What do I need to do this weekend?', find tasks that are due on the weekend or have weekend-related titles.\n"
+            "Return ONLY a JSON list of matching task IDs (strings) in order of relevance, for example: [\"id1\", \"id2\"]. "
+            "Do not return any other text, code blocks, or explanations. If no tasks are relevant, return [].";
 
-      final body = jsonEncode({
-        'contents': [
-          {
-            'parts': [
-              {'text': prompt}
-            ]
-          }
-        ]
-      });
+        final body = jsonEncode({
+          'model': 'openrouter/free',
+          'messages': [
+            {'role': 'user', 'content': prompt}
+          ]
+        });
 
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': geminiApiKey,
-        },
-        body: body,
-      );
+        final response = await http.post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $geminiApiKey',
+          },
+          body: body,
+        );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        String text =
-            data['candidates'][0]['content']['parts'][0]['text'] as String;
-        text = text.replaceAll('```json', '').replaceAll('```', '').trim();
-        final List<dynamic> decoded = jsonDecode(text);
-        semanticSearchResultIds = decoded.map((e) => e.toString()).toList();
-      } else {
-        debugPrint(
-            "Gemini semantic search error: ${response.statusCode} ${response.body}");
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          String text = data['choices'][0]['message']['content'] as String;
+          text = text.replaceAll('```json', '').replaceAll('```', '').trim();
+          final List<dynamic> decoded = jsonDecode(text);
+          semanticSearchResultIds = decoded.map((e) => e.toString()).toList();
+        } else {
+          debugPrint(
+              "OpenRouter semantic search error: ${response.statusCode} ${response.body}");
+          _performLocalSemanticSearch(query);
+        }
+      } catch (e) {
+        debugPrint("Semantic search exception: $e");
         _performLocalSemanticSearch(query);
       }
-    } catch (e) {
-      debugPrint("Semantic search exception: $e");
-      _performLocalSemanticSearch(query);
     } finally {
       isSemanticSearchLoading = false;
       notifyListeners();
@@ -1063,33 +1060,12 @@ class AppState extends ChangeNotifier {
 
   // Diagnostically retrieve all models available to this specific API key
   Future<List<String>> listAvailableModels() async {
-    final url =
-        Uri.parse('https://generativelanguage.googleapis.com/v1beta/models');
-    try {
-      final response = await http.get(
-        url,
-        headers: {
-          'x-goog-api-key': geminiApiKey,
-        },
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final List modelsList = data['models'] ?? [];
-        return modelsList.map((m) => m['name'] as String).toList();
-      } else {
-        return [
-          'Error listing models: ${response.statusCode} - ${response.body}'
-        ];
-      }
-    } catch (e) {
-      return ['Exception listing models: ${e.toString()}'];
-    }
+    return ['openrouter/free'];
   }
 
-  // REST API connection client for Google Gemini (Updated for AQ keys)
+  // REST API connection client for OpenRouter
   Future<String> _queryGemini(String userQuery) async {
-    final url = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent');
+    final url = Uri.parse('https://openrouter.ai/api/v1/chat/completions');
 
     final tasksText = tasks.isEmpty
         ? "No tasks currently."
@@ -1110,36 +1086,30 @@ class AppState extends ChangeNotifier {
         "Current Time: ${DateTime.now().toLocal()}\n\n"
         "Current Tasks:\n$tasksText";
 
-    List<Map<String, dynamic>> contents = [];
-    String lastRole = '';
+    List<Map<String, dynamic>> messages = [];
+    messages.add({
+      "role": "system",
+      "content": systemInstructionText
+    });
 
     for (var msg in chatMessages) {
-      final role = msg.isUser ? "user" : "model";
-      if (role == lastRole) continue;
-
-      contents.add({
+      final role = msg.isUser ? "user" : "assistant";
+      messages.add({
         "role": role,
-        "parts": [
-          {"text": msg.text}
-        ]
+        "content": msg.text
       });
-      lastRole = role;
     }
 
     final body = jsonEncode({
-      "contents": contents,
-      "systemInstruction": {
-        "parts": [
-          {"text": systemInstructionText}
-        ]
-      }
+      "model": "openrouter/free",
+      "messages": messages,
     });
 
     final response = await http.post(
       url,
       headers: {
         'Content-Type': 'application/json',
-        'x-goog-api-key': geminiApiKey,
+        'Authorization': 'Bearer $geminiApiKey',
       },
       body: body,
     );
@@ -1147,24 +1117,16 @@ class AppState extends ChangeNotifier {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       try {
-        final candidate = data['candidates'][0];
-        final text = candidate['content']['parts'][0]['text'] as String;
+        final text = data['choices'][0]['message']['content'] as String;
         return text.trim();
       } catch (e) {
-        return "Received an unexpected response format from the Gemini server.";
+        return "Received an unexpected response format from the OpenRouter server.";
       }
     } else {
       final errorData = jsonDecode(response.body);
       String errorMsg = errorData['error']?['message'] ?? 'Unknown API Error';
 
-      if (response.statusCode == 404) {
-        final models = await listAvailableModels();
-        return "Gemini API Error (Status 404): $errorMsg\n\n"
-            "Here are the active model IDs available for your API key:\n"
-            "${models.map((m) => "- ${m.replaceFirst('models/', '')}").join('\n')}";
-      }
-
-      return "Gemini API Error (Status ${response.statusCode}): $errorMsg";
+      return "OpenRouter API Error (Status ${response.statusCode}): $errorMsg";
     }
   }
 }
