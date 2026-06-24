@@ -14,7 +14,7 @@ import 'package:http/http.dart'
     as http; // REQUIRED: For making REST API requests to Gemini
 
 // IMPORTANT: Paste your OpenRouter API Key here (reversed string)
-const String _hardcodedGeminiApiKey = 'PASTE_YOUR_KEY_HERE';
+const String _hardcodedGeminiApiKey = 'a79c78bcc785654117810670b4968ec2485d300a5b7408b02bc27729866a8778-1v-ro-ks';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
